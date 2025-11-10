@@ -5,30 +5,24 @@ import 'screens/lesson_detail_screen.dart';
 import 'screens/final_quiz_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const CodeBeansApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class CodeBeansApp extends StatelessWidget {
+  const CodeBeansApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CodeBeans',
-      theme: ThemeData(
-        primarySwatch: Colors.brown,
-        useMaterial3: true,
-        textTheme: const TextTheme(
-          titleLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold),
-        ),
-      ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LandingScreen(),
-        '/lessons_list': (context) => const HomeScreen(),
-        '/lesson_detail': (context) => const LessonDetailScreen(),
-        '/final_quiz': (context) => const FinalQuizScreen(),
-      },
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.brown),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const LandingScreen(),
+          '/lessons_list': (context) => const HomeScreen(),
+          '/lesson_detail': (context) => const LessonDetailScreen(),
+          '/final_quiz': (context) => const FinalQuizScreen(),
+        }
     );
   }
 }
