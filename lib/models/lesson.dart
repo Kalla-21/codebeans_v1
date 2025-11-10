@@ -1,0 +1,61 @@
+class Lesson {
+  final String id;
+  final String title;
+  final String description;
+  final List<SubTopic> subTopics;
+  final List<Question> questions;
+  final bool isCompleted;
+
+  const Lesson({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.subTopics,
+    required this.questions,
+    this.isCompleted = false,
+  });
+
+  Lesson copyWith({bool? isCompleted}) {
+    return Lesson(
+      id: id,
+      title: title,
+      description: description,
+      subTopics: subTopics,
+      questions: questions,
+      isCompleted: isCompleted ?? this.isCompleted,
+    );
+  }
+}
+
+class SubTopic {
+  final String title;
+  final String content;
+
+  const SubTopic({
+    required this.title,
+    required this.content,
+  });
+}
+
+class Question {
+  final String question;
+  final List<String>? options; // For multiple choice
+  final String correctAnswer;
+  final String explanation;
+  final QuestionType type;
+
+  const Question({
+    required this.question,
+    this.options,
+    required this.correctAnswer,
+    required this.explanation,
+    required this.type,
+  });
+}
+
+enum QuestionType {
+  multipleChoice,
+  fillBlank,
+  matching,
+  arrangement,
+}
