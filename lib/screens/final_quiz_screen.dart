@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/lesson.dart';
-import '../data/lesson_data.dart';
+import '../data/final_quiz_data.dart';
 
 class FinalQuizScreen extends StatefulWidget {
   const FinalQuizScreen({super.key});
@@ -10,242 +10,195 @@ class FinalQuizScreen extends StatefulWidget {
 }
 
 class _FinalQuizScreenState extends State<FinalQuizScreen> {
-  Map<int, String> userAnswers = {};
+  final Map<String, String> userAnswers = {};
   bool quizSubmitted = false;
-  int score = 0;
-  List<Question> allQuestions = [];
+  double score = 0;
+  final List<Question> allQuestions = [];
 
   @override
   void initState() {
     super.initState();
-    // Combine all questions from all 5 lessons
-    for (var lesson in initialLessons) {
-      allQuestions.addAll(lesson.questions);
-    }
-  }
+    // Flatten all lessons’ questions
+    allQuestions.addAll(finalQuizQuestions);
 
-  void _submitQuiz() {
-    int correctCount = 0;
-    for (int i = 0; i < allQuestions.length; i++) {
-      final question = allQuestions[i];
-      final userAnswer = userAnswers[i]?.toLowerCase().trim() ?? '';
-      final correctAnswer = question.correctAnswer.toLowerCase().trim();
-
-      if (userAnswer == correctAnswer) {
-        correctCount++;
-      }
-    }
-
-    setState(() {
-      score = correctCount;
-      quizSubmitted = true;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (quizSubmitted) {
-      final percentage = (score / allQuestions.length * 100).toStringAsFixed(1);
-      final passed = score >= 20; // 80% to pass
-
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Final Quiz - Results'),
-          backgroundColor: Colors.amber.shade700,
-          foregroundColor: Colors.white,
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              Icon(
-                passed ? Icons.emoji_events : Icons.trending_up,
-                size: 120,
-                color: passed ? Colors.amber : Colors.orange,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                passed ? 'Congratulations!' : 'Keep Practicing!',
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Final Quiz')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            if (quizSubmitted)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Score: $score / ${allQuestions.length}',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Final Score: $score / ${allQuestions.length}',
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                '$percentage%',
-                style: TextStyle(
-                  fontSize: 24,
-                  color: passed ? Colors.green : Colors.orange,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 30),
+            if (quizSubmitted)
+              Expanded(
+                child: ListView.builder(
+                  itemCount: allQuestions.length,
+                  itemBuilder: (context, index) {
+                    final question = allQuestions[index];
+                    final isMatching = question.type == QuestionType.matching;
+                    final matchingPairs = question.matchingPairs ?? {};
 
-              // Show all answers
-              ...List.generate(allQuestions.length, (index) {
-                final question = allQuestions[index];
-                final userAnswer = userAnswers[index] ?? 'Not answered';
-                final isCorrect = userAnswer.toLowerCase().trim() ==
-                    question.correctAnswer.toLowerCase().trim();
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  color: isCorrect ? Colors.green.shade50 : Colors.red.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              isCorrect ? Icons.check_circle : Icons.cancel,
-                              color: isCorrect ? Colors.green : Colors.red,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Question ${index + 1}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                    // Build list of user/answer pairs for matching
+                    final userMatchingList = <Widget>[];
+                    if (isMatching) {
+                      matchingPairs.forEach((left, right) {
+                        final userVal =
+                            userAnswers['${index}_$left'] ?? 'Not answered';
+                        userMatchingList.add(
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: RichText(
+                              text: TextSpan(
+                                style: DefaultTextStyle.of(context).style,
+                                children: [
+                                  TextSpan(
+                                    text: '$left',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontStyle: FontStyle.italic),
+                                  ),
+                                  const TextSpan(
+                                      text: ' → ',
+                                      style:
+                                      TextStyle(fontStyle: FontStyle.normal)),
+                                  TextSpan(
+                                    text: userVal,
+                                    style: const TextStyle(
+                                        fontStyle: FontStyle.italic),
+                                  ),
+                                  TextSpan(
+                                    text: '   (Correct: $right)',
+                                    style: const TextStyle(
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.bold,
+                                      fontStyle: FontStyle.normal,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(question.question),
-                        const Divider(height: 20),
-                        Text(
-                          'Your answer: $userAnswer',
-                          style: const TextStyle(fontStyle: FontStyle.italic),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Correct answer: ${question.correctAnswer}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.lightbulb_outline, color: Colors.blue.shade700, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  question.explanation,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.blue.shade900,
+                        );
+                      });
+                    }
+
+                    final userAnswer =
+                        userAnswers[index.toString()] ?? 'Not answered';
+                    final isCorrect = isMatching
+                        ? matchingPairs.entries.every((entry) =>
+                    (userAnswers['${index}_${entry.key}'] ?? '')
+                        .toLowerCase()
+                        .trim() ==
+                        entry.value.toLowerCase().trim())
+                        : userAnswer.toLowerCase().trim() ==
+                        question.correctAnswer.toLowerCase().trim();
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      color: isCorrect
+                          ? Colors.green.shade50
+                          : Colors.red.shade50,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  isCorrect
+                                      ? Icons.check_circle
+                                      : Icons.cancel,
+                                  color: isCorrect
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Question ${index + 1}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(question.question,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            const Divider(height: 20),
+                            if (isMatching) ...userMatchingList,
+                            if (!isMatching)
+                              Text('Your answer: $userAnswer',
+                                  style: const TextStyle(
+                                      fontStyle: FontStyle.italic)),
+                            const SizedBox(height: 4),
+                            if (!isMatching)
+                              Text(
+                                'Correct answer: ${question.correctAnswer}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  backgroundColor: Colors.amber.shade700,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text(
-                  'Return to Course Map',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Final Quiz - 25 Questions'),
-        backgroundColor: Colors.amber.shade700,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.shade200),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.amber),
-                      SizedBox(width: 8),
-                      Text(
-                        'Final Assessment',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                            const SizedBox(height: 8),
+                            if (question.explanation.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: Colors.blue.shade200),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.lightbulb_outline,
+                                        color: Colors.blue.shade700, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        question.explanation,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.blue.shade900),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'This quiz covers all topics from the 5 lessons. Answer all 25 questions to complete your CodeBeans journey!',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 30),
-
-            ...List.generate(allQuestions.length, (index) {
-              final question = allQuestions[index];
-              return _buildQuestionWidget(question, index);
-            }),
-
-            const SizedBox(height: 30),
-            Center(
+            if (!quizSubmitted)
+              Expanded(
+                child: ListView.builder(
+                  itemCount: allQuestions.length,
+                  itemBuilder: (context, index) =>
+                      _buildQuestionWidget(allQuestions[index], index),
+                ),
+              ),
+            SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
-                onPressed: _submitQuiz,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  backgroundColor: Colors.amber.shade700,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text(
-                  'Submit Final Quiz',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                onPressed: quizSubmitted ? null : _submitQuiz,
+                child: const Text('Submit'),
               ),
             ),
           ],
@@ -254,53 +207,141 @@ class _FinalQuizScreenState extends State<FinalQuizScreen> {
     );
   }
 
+  void _submitQuiz() {
+    double totalScore = 0;
+    for (int i = 0; i < allQuestions.length; i++) {
+      final question = allQuestions[i];
+      if (question.type == QuestionType.matching && question.matchingPairs != null) {
+        int totalPairs = question.matchingPairs!.length;
+        int correctPairs = 0;
+        for (var entry in question.matchingPairs!.entries) {
+          final userVal = userAnswers['${i}_${entry.key}'] ?? '';
+          final correctVal = entry.value;
+          if (userVal.toLowerCase().trim() == correctVal.toLowerCase().trim()) {
+            correctPairs++;
+          }
+        }
+        Text('Correct pairs: $correctPairs / $totalPairs');
+
+    } else {
+        final userAnswer = userAnswers[i.toString()]?.toLowerCase().trim() ?? '';
+        final correctAnswer = question.correctAnswer.toLowerCase().trim();
+        if (userAnswer == correctAnswer) {
+          totalScore += 1;
+        }
+      }
+    }
+    setState(() {
+      score = totalScore;
+      quizSubmitted = true;
+    });
+  }
+
+
   Widget _buildQuestionWidget(Question question, int index) {
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 20),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Question ${index + 1} of ${allQuestions.length}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              question.question,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+            Text('Question ${index + 1} of ${allQuestions.length}'),
+            Text(question.question),
             const SizedBox(height: 16),
 
+            // Multiple Choice
             if (question.type == QuestionType.multipleChoice)
               ...question.options!.map((option) {
                 return RadioListTile<String>(
                   title: Text(option),
                   value: option,
-                  groupValue: userAnswers[index],
-                  onChanged: (value) {
-                    setState(() {
-                      userAnswers[index] = value!;
-                    });
-                  },
+                  groupValue: userAnswers[index.toString()],
+                  onChanged: (value) =>
+                      setState(() => userAnswers[index.toString()] = value!),
                 );
               }).toList()
-            else if (question.type == QuestionType.fillBlank)
+
+            // Fill in the Blank AND Identification
+            else if (question.type == QuestionType.fillBlank ||
+                question.type == QuestionType.identification)
               TextField(
                 decoration: const InputDecoration(
                   hintText: 'Type your answer here',
                   border: OutlineInputBorder(),
                 ),
-                onChanged: (value) {
-                  userAnswers[index] = value;
-                },
-              ),
+                onChanged: (value) => userAnswers[index.toString()] = value,
+              )
+
+            // True or False
+            else if (question.type == QuestionType.trueFalse)
+                Column(
+                  children: [
+                    RadioListTile<String>(
+                      title: const Text('True'),
+                      value: 'true',
+                      groupValue: userAnswers[index.toString()],
+                      onChanged: (value) =>
+                          setState(() => userAnswers[index.toString()] = value!),
+                    ),
+                    RadioListTile<String>(
+                      title: const Text('False'),
+                      value: 'false',
+                      groupValue: userAnswers[index.toString()],
+                      onChanged: (value) =>
+                          setState(() => userAnswers[index.toString()] = value!),
+                    ),
+                  ],
+                )
+
+              // Matching Type
+              else if (question.type == QuestionType.matching)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (question.matchingPairs != null)
+                        ...question.matchingPairs!.entries.map((entry) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(entry.key,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500)),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: DropdownButtonFormField<String>(
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                    ),
+                                    hint: const Text('Select answer'),
+                                    value: userAnswers['${index}_${entry.key}'],
+                                    items: (question.options ?? [])
+                                        .map((option) {
+                                      return DropdownMenuItem(
+                                        value: option,
+                                        child: Text(option),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        userAnswers['${index}_${entry.key}'] =
+                                        value!;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                    ],
+                  ),
           ],
         ),
       ),

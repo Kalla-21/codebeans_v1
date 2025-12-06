@@ -30,19 +30,18 @@ class Lesson {
 class SubTopic {
   final String title;
   final String content;
-
-  const SubTopic({
-    required this.title,
-    required this.content,
-  });
+  const SubTopic({required this.title, required this.content});
 }
+
+enum QuestionType { multipleChoice, fillBlank, identification, trueFalse, matching }
 
 class Question {
   final String question;
-  final List<String>? options; // For multiple choice
-  final String correctAnswer;
+  final List<String>? options;           // For MCQ and matching options
+  final String correctAnswer;            // For non-matching questions
   final String explanation;
   final QuestionType type;
+  final Map<String, String>? matchingPairs; // For matching type
 
   const Question({
     required this.question,
@@ -50,12 +49,6 @@ class Question {
     required this.correctAnswer,
     required this.explanation,
     required this.type,
+    this.matchingPairs,
   });
-}
-
-enum QuestionType {
-  multipleChoice,
-  fillBlank,
-  matching,
-  arrangement,
 }
