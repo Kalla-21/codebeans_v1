@@ -53,7 +53,7 @@ class CodeBeansApp extends StatelessWidget {
         title: 'CodeBeans',
         theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.brown),
         // 💡 CHANGE INITIAL ROUTE to /login
-        initialRoute: '/upload_data',
+        initialRoute: '/',
 
         routes: {
           '/': (context) => const LandingScreen(),

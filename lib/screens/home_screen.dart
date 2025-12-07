@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   User? _currentUser;
   String _username = "Loading...";
   String _userBio = "Java Learner";
-  String? _photoUrl; // Added to store the photo URL
+  String? _photoUrl;
 
   List<Lesson> lessons = [];
   bool isLoading = true;
@@ -60,26 +60,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 uid: '', email: '', password: '', username: 'New User', bio: 'Java Enthusiast', photoUrl: '', progress: {}),
           );
 
-          // Upload Profile Data
-          await _dbRef.child('users/${_currentUser!.uid}').set({
-            'username': matchingUser.username,
-            'bio': matchingUser.bio,
-            'email': matchingUser.email,
-            'photoUrl': matchingUser.photoUrl, // Upload Photo URL
-          });
+          if (matchingUser.username.isNotEmpty) {
+            // Upload Profile Data
+            await _dbRef.child('users/${_currentUser!.uid}').set({
+              'username': matchingUser.username,
+              'bio': matchingUser.bio,
+              'email': matchingUser.email,
+              'photoUrl': matchingUser.photoUrl,
+            });
 
-          // Upload Progress (Mark lessons as complete)
-          if (matchingUser.progress.isNotEmpty) {
-            for (String lessonId in matchingUser.progress.keys) {
-              // Assuming your service marks completion by writing to this path
-              // Adjust if your markLessonComplete logic is different
-              await _firebaseService.markLessonComplete(_currentUser!.uid, lessonId);
+            // Upload Progress (Mark lessons as complete)
+            if (matchingUser.progress.isNotEmpty) {
+              await _dbRef.child('users/${_currentUser!.uid}/completedLessons').set(matchingUser.progress);
             }
-          }
 
-          // Fetch fresh data
-          userSnapshot = await _dbRef.child('users/${_currentUser!.uid}').get();
-          print("✅ Auto-repair successful!");
+            // Fetch fresh data
+            userSnapshot = await _dbRef.child('users/${_currentUser!.uid}').get();
+            print("✅ Auto-repair successful!");
+          }
         } catch (e) {
           print("❌ Auto-repair failed: $e");
         }
@@ -91,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _username = userData['username'] ?? 'Learner';
           _userBio = userData['bio'] ?? 'Java Learner';
-          _photoUrl = userData['photoUrl']; // Fetch Photo URL
+          _photoUrl = userData['photoUrl'];
         });
       } else {
         setState(() {
@@ -101,18 +99,23 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       // 2. Fetch Lessons & Progress
+      //
       final fetchedLessons = await _firebaseService.fetchLessons();
       final completedLessonIds = await _firebaseService.getCompletedLessons(_currentUser!.uid);
 
-      for (var lesson in fetchedLessons) {
+      // --- CRITICAL FIX HERE ---
+      // We use .map() to create a NEW list with the updated 'isCompleted' status.
+      // The previous loop was modifying a local variable, not the list itself.
+      final mergedLessons = fetchedLessons.map((lesson) {
         if (completedLessonIds.contains(lesson.id)) {
-          lesson = lesson.copyWith(isCompleted: true);
+          return lesson.copyWith(isCompleted: true);
         }
-      }
+        return lesson;
+      }).toList();
 
       if (mounted) {
         setState(() {
-          lessons = fetchedLessons;
+          lessons = mergedLessons; // Use the updated list
           allLessonsCompleted = lessons.every((l) => l.isCompleted);
           isLoading = false;
         });
@@ -138,8 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _markLessonComplete(int index) async {
     if (_currentUser == null) return;
     final lesson = lessons[index];
+
+    // Save to Firebase
     await _firebaseService.markLessonComplete(_currentUser!.uid, lesson.id);
 
+    // Update local UI immediately
     setState(() {
       lessons[index] = lesson.copyWith(isCompleted: true);
       allLessonsCompleted = lessons.every((l) => l.isCompleted);
@@ -192,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: Drawer(
         child: Column(
           children: [
-            // --- UPDATED HEADER ---
+            // --- HEADER ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -207,11 +213,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Profile Picture Logic
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white,
-                      // If photoUrl exists and is valid, load image. Else show initial.
                       backgroundImage: (_photoUrl != null && _photoUrl!.isNotEmpty)
                           ? NetworkImage(_photoUrl!)
                           : null,
@@ -263,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Drawer Items
+            // --- DRAWER ITEMS ---
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Container(
