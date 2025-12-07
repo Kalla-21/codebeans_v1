@@ -1,7 +1,10 @@
-// final_quiz_data.dart
-import '../models/lesson.dart';
+// ============================================
+// FILE: lib/data/final_quiz_data.dart
+// ============================================
 
-final List<Question> finalQuizQuestions = [
+import '../models/lesson.dart'; // Import Lesson which now holds QuestionType
+
+final List<Question> finalQuizQuestions = const [
   //======= IMPERATIVE PROGRAMMING =======
   Question(
     question: 'What type would you use to store a true/false value in Java?',

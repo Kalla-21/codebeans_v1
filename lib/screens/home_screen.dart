@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import '../data/lesson_data.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../models/lesson.dart';
+import '../services/firebase_service.dart';
+import '../data/user_data.dart'; // Import to access initialTestUsers
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,17 +13,119 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Lesson> lessons = List.from(initialLessons);
+  final FirebaseService _firebaseService = FirebaseService();
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+
+  User? _currentUser;
+  String _username = "Loading...";
+  String _userBio = "Java Learner";
+  String? _photoUrl; // Added to store the photo URL
+
+  List<Lesson> lessons = [];
+  bool isLoading = true;
   bool allLessonsCompleted = false;
   bool progressiveMode = true;
   bool _hasInitialized = false;
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    setState(() => isLoading = true);
+
+    try {
+      _currentUser = FirebaseAuth.instance.currentUser;
+
+      if (_currentUser == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      // 1. Fetch User Profile
+      DataSnapshot userSnapshot = await _dbRef.child('users/${_currentUser!.uid}').get();
+
+      // --- AUTO-REPAIR & UPLOAD LOGIC ---
+      if (!userSnapshot.exists) {
+        print("⚠️ Profile missing. Attempting to load data from user_data.dart...");
+        try {
+          // Find the matching test user by email
+          final matchingUser = initialTestUsers.firstWhere(
+                (u) => u.email.toLowerCase() == _currentUser!.email?.toLowerCase(),
+            orElse: () => const TestUser(
+                uid: '', email: '', password: '', username: 'New User', bio: 'Java Enthusiast', photoUrl: '', progress: {}),
+          );
+
+          // Upload Profile Data
+          await _dbRef.child('users/${_currentUser!.uid}').set({
+            'username': matchingUser.username,
+            'bio': matchingUser.bio,
+            'email': matchingUser.email,
+            'photoUrl': matchingUser.photoUrl, // Upload Photo URL
+          });
+
+          // Upload Progress (Mark lessons as complete)
+          if (matchingUser.progress.isNotEmpty) {
+            for (String lessonId in matchingUser.progress.keys) {
+              // Assuming your service marks completion by writing to this path
+              // Adjust if your markLessonComplete logic is different
+              await _firebaseService.markLessonComplete(_currentUser!.uid, lessonId);
+            }
+          }
+
+          // Fetch fresh data
+          userSnapshot = await _dbRef.child('users/${_currentUser!.uid}').get();
+          print("✅ Auto-repair successful!");
+        } catch (e) {
+          print("❌ Auto-repair failed: $e");
+        }
+      }
+      // ----------------------------------
+
+      if (userSnapshot.exists) {
+        final userData = userSnapshot.value as Map<dynamic, dynamic>;
+        setState(() {
+          _username = userData['username'] ?? 'Learner';
+          _userBio = userData['bio'] ?? 'Java Learner';
+          _photoUrl = userData['photoUrl']; // Fetch Photo URL
+        });
+      } else {
+        setState(() {
+          _username = _currentUser!.displayName ?? 'Learner';
+          _userBio = 'Ready to code!';
+        });
+      }
+
+      // 2. Fetch Lessons & Progress
+      final fetchedLessons = await _firebaseService.fetchLessons();
+      final completedLessonIds = await _firebaseService.getCompletedLessons(_currentUser!.uid);
+
+      for (var lesson in fetchedLessons) {
+        if (completedLessonIds.contains(lesson.id)) {
+          lesson = lesson.copyWith(isCompleted: true);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          lessons = fetchedLessons;
+          allLessonsCompleted = lessons.every((l) => l.isCompleted);
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error initializing data: $e');
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    // Get the mode from navigation arguments (only on first load)
     if (!_hasInitialized) {
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args.containsKey('progressiveMode')) {
@@ -30,38 +135,56 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _markLessonComplete(int index) {
-    setState(() {
-      lessons[index] = lessons[index].copyWith(isCompleted: true);
+  Future<void> _markLessonComplete(int index) async {
+    if (_currentUser == null) return;
+    final lesson = lessons[index];
+    await _firebaseService.markLessonComplete(_currentUser!.uid, lesson.id);
 
-      // Check if all 5 lessons are completed
-      allLessonsCompleted = lessons.every((lesson) => lesson.isCompleted);
+    setState(() {
+      lessons[index] = lesson.copyWith(isCompleted: true);
+      allLessonsCompleted = lessons.every((l) => l.isCompleted);
     });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ ${lesson.title} completed!'), backgroundColor: Colors.green),
+      );
+    }
   }
 
   bool _isLessonAccessible(int index) {
-    if (!progressiveMode) return true; // All unlocked in full access mode
+    if (!progressiveMode) return true;
     if (index == 0) return true;
     return lessons[index - 1].isCompleted;
   }
 
+  Future<void> _handleSignOut() async {
+    await FirebaseAuth.instance.signOut();
+    if (mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('CodeBeans'), backgroundColor: Colors.brown.shade700),
+        body: Center(child: CircularProgressIndicator(color: Colors.brown.shade700)),
+      );
+    }
+
+    final String initial = _username.isNotEmpty ? _username[0].toUpperCase() : 'U';
+
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu),
-          onPressed: () {
-            _scaffoldKey.currentState?.openDrawer();
-          },
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         title: const Row(
-          children: [
-            Icon(Icons.coffee, size: 24),
-            SizedBox(width: 8),
-            Text('CodeBeans - Course Map'),
-          ],
+          children: [Icon(Icons.coffee, size: 24), SizedBox(width: 8), Text('CodeBeans')],
         ),
         backgroundColor: Colors.brown.shade700,
         foregroundColor: Colors.white,
@@ -69,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: Drawer(
         child: Column(
           children: [
-            // Drawer Header with User Profile
+            // --- UPDATED HEADER ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -84,22 +207,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Profile Picture Logic
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white,
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/icon/app_icon.png',
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
+                      // If photoUrl exists and is valid, load image. Else show initial.
+                      backgroundImage: (_photoUrl != null && _photoUrl!.isNotEmpty)
+                          ? NetworkImage(_photoUrl!)
+                          : null,
+                      child: (_photoUrl == null || _photoUrl!.isEmpty)
+                          ? Text(
+                        initial,
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.brown.shade800,
                         ),
-                      ),
+                      )
+                          : null,
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'NoobMaster69',
-                      style: TextStyle(
+                    Text(
+                      _username,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -107,10 +237,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Java Learner',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 14,
+                      _currentUser?.email ?? '',
+                      style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _userBio,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -118,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Progressive Mode Toggle
+            // Drawer Items
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Container(
@@ -128,49 +273,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   border: Border.all(color: Colors.brown.shade200),
                 ),
                 child: SwitchListTile(
-                  secondary: Icon(
-                    progressiveMode ? Icons.lock_clock : Icons.lock_open,
-                    color: Colors.brown.shade700,
-                  ),
-                  title: const Text(
-                    'Progressive Mode',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    progressiveMode
-                        ? 'Lessons unlock sequentially'
-                        : 'All lessons unlocked',
-                    style: const TextStyle(fontSize: 12),
-                  ),
+                  secondary: Icon(Icons.lock_clock, color: Colors.brown.shade700),
+                  title: const Text('Progressive Mode', style: TextStyle(fontWeight: FontWeight.bold)),
                   value: progressiveMode,
                   activeColor: Colors.brown.shade700,
-                  onChanged: (bool value) {
-                    setState(() {
-                      progressiveMode = value;
-                    });
-                  },
+                  onChanged: (val) => setState(() => progressiveMode = val),
                 ),
               ),
             ),
-
             const Divider(),
-
-            // Menu Items
             ListTile(
               leading: const Icon(Icons.home),
               title: const Text('Home'),
-              onTap: () {
-                Navigator.pop(context);
-              },
+              onTap: () => Navigator.pop(context),
             ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Settings coming soon!')),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings coming soon!')));
               },
             ),
             ListTile(
@@ -182,64 +304,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   context: context,
                   applicationName: 'CodeBeans',
                   applicationVersion: '1.0.0',
-                  applicationIcon: Image.asset(
-                    'assets/icon/app_icon.png',
-                    width: 50,
-                    height: 50,
-                  ),
-                  children: const [
-                    Text('Brew your Java skills one bean at a time!'),
-                  ],
+                  applicationIcon: const Icon(Icons.coffee, size: 50, color: Colors.brown),
+                  children: const [Text('Brew your Java skills one bean at a time!')],
                 );
               },
             ),
-
             const Spacer(),
-
-            // Progress Summary
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.analytics, color: Colors.green.shade700),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Progress',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '${lessons.where((l) => l.isCompleted).length} / ${lessons.length} lessons',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Sign Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              onTap: _handleSignOut,
             ),
+            const SizedBox(height: 10),
           ],
         ),
       ),
       body: Column(
         children: [
-          // Mode Indicator Banner
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -253,9 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  progressiveMode
-                      ? 'Progressive Mode: Complete lessons in order'
-                      : 'Full Access Mode: All lessons available',
+                  progressiveMode ? 'Progressive Mode On' : 'Full Access Mode',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -265,89 +344,83 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: lessons.length,
-              itemBuilder: (context, index) {
-                final lesson = lessons[index];
-                final isAccessible = _isLessonAccessible(index);
-                final isLocked = !isAccessible;
+            child: RefreshIndicator(
+              onRefresh: _initializeData,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: lessons.length,
+                itemBuilder: (context, index) {
+                  final lesson = lessons[index];
+                  final isAccessible = _isLessonAccessible(index);
+                  final isLocked = !isAccessible;
 
-                return Opacity(
-                  opacity: isLocked ? 0.5 : 1.0,
-                  child: Card(
-                    elevation: isLocked ? 1 : 3,
-                    margin: const EdgeInsets.symmetric(vertical: 8.0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    color: lesson.isCompleted ? Colors.green.shade50 : null,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                      leading: CircleAvatar(
-                        backgroundColor: lesson.isCompleted
-                            ? Colors.green.shade200
-                            : isLocked
-                            ? Colors.grey.shade300
-                            : Colors.brown.shade200,
-                        child: lesson.isCompleted
-                            ? const Icon(Icons.check, color: Colors.green)
-                            : isLocked
-                            ? const Icon(Icons.lock, color: Colors.grey)
-                            : Text('${index + 1}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown.shade700)),
-                      ),
-                      title: Text(
-                        lesson.title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontSize: 18,
-                          color: isLocked ? Colors.grey : null,
+                  return Opacity(
+                    opacity: isLocked ? 0.5 : 1.0,
+                    child: Card(
+                      elevation: isLocked ? 1 : 3,
+                      margin: const EdgeInsets.symmetric(vertical: 8.0),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      color: lesson.isCompleted ? Colors.green.shade50 : null,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                        leading: CircleAvatar(
+                          backgroundColor: lesson.isCompleted
+                              ? Colors.green.shade200
+                              : isLocked
+                              ? Colors.grey.shade300
+                              : Colors.brown.shade200,
+                          child: lesson.isCompleted
+                              ? const Icon(Icons.check, color: Colors.green)
+                              : isLocked
+                              ? const Icon(Icons.lock, color: Colors.grey)
+                              : Text('${index + 1}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown.shade700)),
                         ),
-                      ),
-                      subtitle: Text(
-                        lesson.isCompleted
-                            ? 'Completed ✓'
-                            : isLocked
-                            ? 'Complete previous lesson to unlock'
-                            : lesson.description,
-                        style: TextStyle(
-                          color: lesson.isCompleted ? Colors.green : Colors.grey,
+                        title: Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          lesson.isCompleted ? 'Completed' : lesson.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      trailing: Icon(
-                        isLocked ? Icons.lock : Icons.arrow_forward_ios,
-                        size: 16,
-                        color: isLocked ? Colors.grey : Colors.brown.shade700,
-                      ),
-                      onTap: isAccessible ? () async {
-                        final result = await Navigator.of(context).pushNamed(
-                          '/lesson_detail',
-                          arguments: {'lesson': lesson, 'index': index},
-                        );
-
-                        if (result == true) {
-                          _markLessonComplete(index);
+                        trailing: Icon(
+                          isLocked ? Icons.lock : Icons.arrow_forward_ios,
+                          size: 16,
+                          color: isLocked ? Colors.grey : Colors.brown.shade700,
+                        ),
+                        onTap: isAccessible
+                            ? () async {
+                          final result = await Navigator.of(context).pushNamed(
+                            '/lesson_detail',
+                            arguments: {
+                              'lesson': lesson,
+                              'index': index,
+                              'userId': _currentUser?.uid,
+                            },
+                          );
+                          if (result == true) {
+                            await _markLessonComplete(index);
+                          }
                         }
-                      } : null,
+                            : null,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
-
-          // Final Quiz Button
           if (allLessonsCompleted)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.of(context).pushNamed('/final_quiz');
+                  Navigator.of(context).pushNamed(
+                    '/final_quiz',
+                    arguments: {'userId': _currentUser?.uid},
+                  );
                 },
                 icon: const Icon(Icons.quiz, size: 28),
-                label: const Text(
-                  'Take Final Quiz (25 Questions)',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                label: const Text('Take Final Quiz', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

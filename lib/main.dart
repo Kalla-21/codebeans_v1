@@ -4,7 +4,11 @@ import 'screens/landing_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/lesson_detail_screen.dart';
 import 'screens/final_quiz_screen.dart';
+import 'screens/firebase_debug_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'utils/data_uploader.dart';
 
 void writeTestMessage() async {
   // Get a reference to a specific location in your database.
@@ -34,15 +38,10 @@ Future<void> main() async{
   // Initialize the core Firebase app (this is correct).
   await Firebase.initializeApp();
 
-  // --- THIS IS THE FIX ---
-  // Explicitly tell the SDK which database URL to use.
-  // This overrides the default US-central URL.
+  // Explicitly tell the SDK which database URL to use for Realtime Database.
   FirebaseDatabase.instance.databaseURL = "https://codebeans-85e23-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-  // Now, when you call FirebaseDatabase.instance anywhere else in the app,
-  // it will automatically use the correct URL.
   runApp(const CodeBeansApp());
-
 }
 
 class CodeBeansApp extends StatelessWidget {
@@ -51,11 +50,18 @@ class CodeBeansApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CodeBeans',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.brown),
-        initialRoute: '/',
+        title: 'CodeBeans',
+        theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.brown),
+        // 💡 CHANGE INITIAL ROUTE to /login
+        initialRoute: '/upload_data',
+
         routes: {
           '/': (context) => const LandingScreen(),
+          '/debug': (context) => const FirebaseDebugScreen(),
+          '/upload_data': (context) => const DataUploaderScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/signup': (context) => const SignUpScreen(),
+          '/home': (context) => const HomeScreen(),
           '/lessons_list': (context) => const HomeScreen(),
           '/lesson_detail': (context) => const LessonDetailScreen(),
           '/final_quiz': (context) => const FinalQuizScreen(),

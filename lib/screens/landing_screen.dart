@@ -3,90 +3,6 @@ import 'package:flutter/material.dart';
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
 
-  void _showModeSelectionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text(
-            'Choose Your Learning Path',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'How would you like to learn?',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 20),
-
-              // Progressive Mode Option
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushReplacementNamed(
-                    '/lessons_list',
-                    arguments: {'progressiveMode': true},
-                  );
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.brown.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading: Icon(Icons.lock_clock, color: Colors.brown.shade700, size: 32),
-                    title: const Text(
-                      'Progressive Mode',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: const Text(
-                      'Complete lessons in order. Unlock new lessons as you progress.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Full Access Mode Option
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushReplacementNamed(
-                    '/lessons_list',
-                    arguments: {'progressiveMode': false},
-                  );
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.brown.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading: Icon(Icons.lock_open, color: Colors.brown.shade700, size: 32),
-                    title: const Text(
-                      'Full Access Mode',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: const Text(
-                      'Access all lessons immediately. Learn at your own pace.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,6 +20,7 @@ class LandingScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
+                // App Logo
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -121,6 +38,8 @@ class LandingScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 30),
+
+                // Welcome Text
                 Text(
                   'Welcome to CodeBeans!',
                   textAlign: TextAlign.center,
@@ -136,8 +55,12 @@ class LandingScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 18, color: Colors.white70),
                 ),
                 const SizedBox(height: 60),
+
+                // Navigation Button -> Goes to Login
                 ElevatedButton(
-                  onPressed: () => _showModeSelectionDialog(context),
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/login');
+                  },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),

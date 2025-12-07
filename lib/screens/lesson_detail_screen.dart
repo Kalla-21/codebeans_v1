@@ -10,8 +10,11 @@ class LessonDetailScreen extends StatelessWidget {
     final lesson = data['lesson'] as Lesson;
     final index = data['index'] as int;
 
+    // FIX: Calculate total tabs dynamically (Subtopics + 1 for Quiz)
+    final int tabCount = lesson.subTopics.length + 1;
+
     return DefaultTabController(
-      length: 4, // 3 subtopic tabs + 1 quiz tab
+      length: tabCount,
       child: Scaffold(
         appBar: AppBar(
           title: Text(lesson.title),
@@ -23,22 +26,18 @@ class LessonDetailScreen extends StatelessWidget {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
-              Tab(text: lesson.subTopics[0].title),
-              Tab(text: lesson.subTopics[1].title),
-              Tab(text: lesson.subTopics[2].title),
+              // 1. Dynamically create a Tab for each subtopic
+              ...lesson.subTopics.map((subTopic) => Tab(text: subTopic.title)),
+              // 2. Add the Quiz Tab at the end
               const Tab(icon: Icon(Icons.quiz), text: 'Quiz'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            // Subtopic 1
-            _buildSubTopicContent(lesson.subTopics[0]),
-            // Subtopic 2
-            _buildSubTopicContent(lesson.subTopics[1]),
-            // Subtopic 3
-            _buildSubTopicContent(lesson.subTopics[2]),
-            // Quiz Tab
+            // 1. Dynamically create content for each subtopic
+            ...lesson.subTopics.map((subTopic) => _buildSubTopicContent(subTopic)),
+            // 2. Add the Quiz Tab View
             _QuizTab(lesson: lesson, lessonIndex: index),
           ],
         ),
@@ -52,14 +51,18 @@ class LessonDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title
           Text(
             subTopic.title,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
+              color: Colors.brown,
             ),
           ),
           const SizedBox(height: 20),
+
+          // Content Text
           Text(
             subTopic.content,
             style: const TextStyle(
@@ -67,12 +70,156 @@ class LessonDetailScreen extends StatelessWidget {
               height: 1.6,
             ),
           ),
+          const SizedBox(height: 30),
+
+          // --- COMPILER INTEGRATION ---
+          // Only show if runnableCode exists in the data
+          if (subTopic.runnableCode != null) ...[
+            const Divider(),
+            const Text(
+              "Try it out:",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            _CodeEditorWidget(
+              code: subTopic.runnableCode!,
+              expectedOutput: subTopic.expectedOutput,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
+// =========================================================
+// WIDGET: Simple Online Compiler Simulation
+// =========================================================
+class _CodeEditorWidget extends StatefulWidget {
+  final String code;
+  final String? expectedOutput;
+
+  const _CodeEditorWidget({required this.code, this.expectedOutput});
+
+  @override
+  State<_CodeEditorWidget> createState() => _CodeEditorWidgetState();
+}
+
+class _CodeEditorWidgetState extends State<_CodeEditorWidget> {
+  String _output = "";
+  bool _isRunning = false;
+
+  void _runCode() async {
+    setState(() {
+      _isRunning = true;
+      _output = "";
+    });
+
+    // Simulate network/compilation delay (1.5 seconds)
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (mounted) {
+      setState(() {
+        _isRunning = false;
+        // Since we don't have a real backend, we show the expected output
+        // defined in the lesson data.
+        _output = widget.expectedOutput ?? "Code Executed Successfully.";
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E), // Dark editor background
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade800),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header (File Name)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: const BoxDecoration(
+              color: Color(0xFF252526),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.code, color: Colors.blueAccent, size: 16),
+                SizedBox(width: 8),
+                Text("Main.java", style: TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
+            ),
+          ),
+
+          // Code Area
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Text(
+              widget.code,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                color: Color(0xFFD4D4D4), // VS Code default text color
+                fontSize: 14,
+              ),
+            ),
+          ),
+
+          // Run Button Area
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            color: const Color(0xFF252526),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _isRunning ? null : _runCode,
+                icon: _isRunning
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.play_arrow, size: 18),
+                label: Text(_isRunning ? "Compiling..." : "Run Code"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ),
+
+          // Output Console
+          if (_output.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.white24)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Output:", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(
+                    _output,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      color: Colors.lightGreenAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// =========================================================
+// WIDGET: Quiz Tab (Existing Logic)
+// =========================================================
 class _QuizTab extends StatefulWidget {
   final Lesson lesson;
   final int lessonIndex;
@@ -117,7 +264,6 @@ class _QuizTabState extends State<_QuizTab> {
     });
   }
 
-
   void _returnToLessons() {
     Navigator.of(context).pop(true); // Mark lesson as complete
   }
@@ -143,17 +289,17 @@ class _QuizTabState extends State<_QuizTab> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Score: $score / ${widget.lesson.questions.length}',
+              'Score: ${score.toStringAsFixed(1)} / ${widget.lesson.questions.length}',
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 30),
 
-            // Show all answers
+            // Show all answers logic
             ...List.generate(widget.lesson.questions.length, (index) {
               final question = widget.lesson.questions[index];
               bool isMatching = question.type == QuestionType.matching;
               final matchingPairs = question.matchingPairs ?? {};
-              // Collect user answer display for matching
+
               final userMatchingList = <Widget>[];
               if (isMatching) {
                 matchingPairs.forEach((left, right) {
@@ -318,7 +464,7 @@ class _QuizTabState extends State<_QuizTab> {
             Text(question.question),
             const SizedBox(height: 16),
 
-            // Multiple Choice
+            // Question Type Logic (Preserved)
             if (question.type == QuestionType.multipleChoice)
               ...question.options!.map((option) {
                 return RadioListTile<String>(
@@ -329,91 +475,75 @@ class _QuizTabState extends State<_QuizTab> {
                       setState(() => userAnswers[index.toString()] = value!),
                 );
               }).toList()
-
-            // Fill in the Blank AND Identification
-            else
-              if (question.type == QuestionType.fillBlank ||
-                  question.type == QuestionType.identification)
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Type your answer here',
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (value) => userAnswers[index.toString()] = value,
-                )
-
-              // True or False
-              else
-                if (question.type == QuestionType.trueFalse)
-                  Column(
-                    children: [
-                      RadioListTile<String>(
-                        title: const Text('True'),
-                        value: 'true',
-                        groupValue: userAnswers[index.toString()],
-                        onChanged: (value) =>
-                            setState(() =>
-                            userAnswers[index.toString()] = value!),
-                      ),
-                      RadioListTile<String>(
-                        title: const Text('False'),
-                        value: 'false',
-                        groupValue: userAnswers[index.toString()],
-                        onChanged: (value) =>
-                            setState(() =>
-                            userAnswers[index.toString()] = value!),
-                      ),
-                    ],
-                  )
-
-                // Matching Type
-                else
-                  if (question.type == QuestionType.matching)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (question.matchingPairs != null)
-                          ...question.matchingPairs!.entries.map((entry) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(entry.key, style: const TextStyle(
-                                      fontWeight: FontWeight.w500)),
-                                  const SizedBox(height: 8),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: DropdownButtonFormField<String>(
-                                      decoration: const InputDecoration(
-                                        border: OutlineInputBorder(),
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8,
-                                        ),
-                                      ),
-                                      hint: const Text('Select answer'),
-                                      value: userAnswers['${index}_${entry.key}'],
-                                      items: (question.options ?? []).map((
-                                          option) {
-                                        return DropdownMenuItem(
-                                          value: option,
-                                          child: Text(option),
-                                        );
-                                      }).toList(),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          userAnswers['${index}_${entry.key}'] =
-                                          value!;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                      ],
+            else if (question.type == QuestionType.fillBlank ||
+                question.type == QuestionType.identification)
+              TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Type your answer here',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) => userAnswers[index.toString()] = value,
+              )
+            else if (question.type == QuestionType.trueFalse)
+                Column(
+                  children: [
+                    RadioListTile<String>(
+                      title: const Text('True'),
+                      value: 'true',
+                      groupValue: userAnswers[index.toString()],
+                      onChanged: (value) =>
+                          setState(() => userAnswers[index.toString()] = value!),
                     ),
+                    RadioListTile<String>(
+                      title: const Text('False'),
+                      value: 'false',
+                      groupValue: userAnswers[index.toString()],
+                      onChanged: (value) =>
+                          setState(() => userAnswers[index.toString()] = value!),
+                    ),
+                  ],
+                )
+              else if (question.type == QuestionType.matching)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (question.matchingPairs != null)
+                        ...question.matchingPairs!.entries.map((entry) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: DropdownButtonFormField<String>(
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    hint: const Text('Select answer'),
+                                    value: userAnswers['${index}_${entry.key}'],
+                                    items: (question.options ?? []).map((option) {
+                                      return DropdownMenuItem(
+                                        value: option,
+                                        child: Text(option),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        userAnswers['${index}_${entry.key}'] = value!;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                    ],
+                  ),
           ],
         ),
       ),
