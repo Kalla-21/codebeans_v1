@@ -114,7 +114,7 @@ public class Main {
     subTopics: [
       SubTopic(
         title: 'Classes & Objects',
-        content: 'Object-Oriented Programming (OOP) revolves around the concept of "objects," which contain both data (fields) and code (methods). A **Class** serves as the blueprint or template for these objects. For example, a `Car` class might define properties like `color` and `speed`, but it doesn\'t represent a specific car until you create an instance of it.\n\nAn **Object** is a specific instance of a class. When you use the `new` keyword in Java, you are allocating memory for a new object based on that class blueprint. You can create multiple objects from a single class, each holding its own unique data values while sharing the same structure and behaviors defined by the class.',
+        content: 'Object-Oriented Programming (OOP) revolves around the concept of "objects," which contain both data (fields) and code (methods). A `Class` serves as the blueprint or template for these objects. For example, a `Car` class might define properties like `color` and `speed`, but it doesn\'t represent a specific car until you create an instance of it.\n\nAn `Object` is a specific instance of a class. When you use the `new` keyword in Java, you are allocating memory for a new object based on that class blueprint. You can create multiple objects from a single class, each holding its own unique data values while sharing the same structure and behaviors defined by the class.',
         runnableCode: '''
 class Dog {
     String name;

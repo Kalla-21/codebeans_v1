@@ -35,7 +35,7 @@ Future<void> main() async{
   // Ensure Flutter is ready.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the core Firebase app (this is correct).
+  // Initialize the core Firebase app.
   await Firebase.initializeApp();
 
   // Explicitly tell the SDK which database URL to use for Realtime Database.
@@ -51,7 +51,10 @@ class CodeBeansApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
         title: 'CodeBeans',
-        theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.brown),
+        theme: ThemeData(
+            useMaterial3: true,
+            colorSchemeSeed: Colors.brown,
+            fontFamily: 'Montserrat'),
         // 💡 CHANGE INITIAL ROUTE to /login
         initialRoute: '/',
 

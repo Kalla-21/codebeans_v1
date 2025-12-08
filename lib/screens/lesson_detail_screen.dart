@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/lesson.dart';
+import '../widget/styling.dart';
 
 class LessonDetailScreen extends StatelessWidget {
   const LessonDetailScreen({super.key});
@@ -63,9 +64,10 @@ class LessonDetailScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Content Text
-          Text(
+          buildStyledText(
             subTopic.content,
-            style: const TextStyle(
+            defaultStyle: const TextStyle(
+              color: Colors.black,
               fontSize: 16,
               height: 1.6,
             ),
