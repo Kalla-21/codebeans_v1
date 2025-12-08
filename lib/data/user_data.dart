@@ -128,7 +128,7 @@ const List<TestUser> initialTestUsers = [
   ),
   TestUser(
     uid: 'renzo',
-    email: 'a',
+    email: 'a@mail.com',
     password: 'a',
     username: 'Renzo',
     bio: 'at the end of the day is night, goodnight',

@@ -16,6 +16,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
 
+  double _progressValue = 0.0;
+
   User? _currentUser;
   String _username = "Loading...";
   String _userBio = "Java Learner";
@@ -117,6 +119,10 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           lessons = mergedLessons; // Use the updated list
           allLessonsCompleted = lessons.every((l) => l.isCompleted);
+          if (lessons.isNotEmpty) {
+            final completedCount = lessons.where((l) => l.isCompleted).length;
+            _progressValue = completedCount / lessons.length;
+          }
           isLoading = false;
         });
       }
@@ -150,6 +156,11 @@ class _HomeScreenState extends State<HomeScreen> {
       lessons[index] = lesson.copyWith(isCompleted: true);
       allLessonsCompleted = lessons.every((l) => l.isCompleted);
     });
+
+    if (lessons.isNotEmpty) {
+      final completedCount = lessons.where((l) => l.isCompleted).length;
+      _progressValue = completedCount / lessons.length;
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -335,6 +346,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          // Progress bar
+          _ProgressBar(
+            progressValue: _progressValue,
+            completedLessons: lessons.where((l) => l.isCompleted).length,
+            totalLessons: lessons.length,
+          ),
           // Progressive / Full Access banner
           Builder(
             builder: (context) {
@@ -491,6 +508,63 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+class _ProgressBar extends StatelessWidget {
+  final double progressValue;
+  final int completedLessons;
+  final int totalLessons;
+
+  const _ProgressBar({
+    required this.progressValue,
+    required this.completedLessons,
+    required this.totalLessons,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row for the "Progress" title and percentage text
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Your Progress',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              Text(
+                '${(progressValue * 100).toStringAsFixed(0)}% ($completedLessons/$totalLessons)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // The actual progress bar
+          LinearProgressIndicator(
+            value: progressValue,
+            minHeight: 12, // Makes the bar thicker
+            backgroundColor: colorScheme.surfaceVariant,
+            color: colorScheme.primary,
+            borderRadius: BorderRadius.circular(6),
+          ),
         ],
       ),
     );
