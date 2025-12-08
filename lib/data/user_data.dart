@@ -126,4 +126,13 @@ const List<TestUser> initialTestUsers = [
     photoUrl: 'https://i.pinimg.com/1200x/b4/80/6f/b4806f5b637c1416db1716af74469e1f.jpg',
     progress: {},
   ),
+  TestUser(
+    uid: 'renzo',
+    email: 'a',
+    password: 'a',
+    username: 'Renzo',
+    bio: 'at the end of the day is night, goodnight',
+    photoUrl: 'https://i.pinimg.com/1200x/b4/80/6f/b4806f5b637c1416db1716af74469e1f.jpg',
+    progress: {},
+  ),
 ];
