@@ -335,28 +335,40 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            color: progressiveMode ? Colors.orange.shade100 : Colors.green.shade100,
-            child: Row(
-              children: [
-                Icon(
-                  progressiveMode ? Icons.lock_clock : Icons.lock_open,
-                  size: 16,
-                  color: progressiveMode ? Colors.orange.shade700 : Colors.green.shade700,
+          // Progressive / Full Access banner
+          Builder(
+            builder: (context) {
+              final colorScheme = Theme.of(context).colorScheme;
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                color: progressiveMode
+                    ? colorScheme.secondaryContainer
+                    : colorScheme.tertiaryContainer,
+                child: Row(
+                  children: [
+                    Icon(
+                      progressiveMode ? Icons.lock_clock : Icons.lock_open,
+                      size: 16,
+                      color: progressiveMode
+                          ? colorScheme.onSecondaryContainer
+                          : colorScheme.onTertiaryContainer,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      progressiveMode ? 'Progressive Mode On' : 'Full Access Mode',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: progressiveMode
+                            ? colorScheme.onSecondaryContainer
+                            : colorScheme.onTertiaryContainer,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  progressiveMode ? 'Progressive Mode On' : 'Full Access Mode',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: progressiveMode ? Colors.orange.shade700 : Colors.green.shade700,
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
           Expanded(
             child: RefreshIndicator(
@@ -368,42 +380,77 @@ class _HomeScreenState extends State<HomeScreen> {
                   final lesson = lessons[index];
                   final isAccessible = _isLessonAccessible(index);
                   final isLocked = !isAccessible;
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final colorScheme = Theme.of(context).colorScheme;
 
                   return Opacity(
                     opacity: isLocked ? 0.5 : 1.0,
                     child: Card(
                       elevation: isLocked ? 1 : 3,
                       margin: const EdgeInsets.symmetric(vertical: 8.0),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: lesson.isCompleted ? Colors.green.shade50 : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      color: lesson.isCompleted
+                          ? (isDark
+                          ? colorScheme.surfaceVariant.withOpacity(0.5)
+                          : Colors.green.shade50)
+                          : (isDark ? colorScheme.surfaceVariant : null),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 8.0,
+                          horizontal: 16.0,
+                        ),
                         leading: CircleAvatar(
                           backgroundColor: lesson.isCompleted
-                              ? Colors.green.shade200
+                              ? (isDark
+                              ? colorScheme.primaryContainer
+                              : Colors.green.shade200)
                               : isLocked
                               ? Colors.grey.shade300
-                              : Colors.brown.shade200,
+                              : (isDark
+                              ? colorScheme.secondaryContainer
+                              : Colors.brown.shade200),
                           child: lesson.isCompleted
-                              ? const Icon(Icons.check, color: Colors.green)
+                              ? Icon(Icons.check,
+                              color: isDark
+                                  ? colorScheme.onPrimaryContainer
+                                  : Colors.green)
                               : isLocked
                               ? const Icon(Icons.lock, color: Colors.grey)
-                              : Text('${index + 1}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown.shade700)),
+                              : Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? colorScheme.onSecondaryContainer
+                                  : Colors.brown.shade700,
+                            ),
+                          ),
                         ),
-                        title: Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(
+                          lesson.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
                         subtitle: Text(
                           lesson.isCompleted ? 'Completed' : lesson.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
                         ),
                         trailing: Icon(
                           isLocked ? Icons.lock : Icons.arrow_forward_ios,
                           size: 16,
-                          color: isLocked ? Colors.grey : Colors.brown.shade700,
+                          color:
+                          isLocked ? Colors.grey : colorScheme.primary,
                         ),
                         onTap: isAccessible
                             ? () async {
-                          final result = await Navigator.of(context).pushNamed(
+                          final result =
+                          await Navigator.of(context).pushNamed(
                             '/lesson_detail',
                             arguments: {
                               'lesson': lesson,

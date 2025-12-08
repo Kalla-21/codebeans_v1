@@ -37,7 +37,7 @@ class LessonDetailScreen extends StatelessWidget {
         body: TabBarView(
           children: [
             // 1. Dynamically create content for each subtopic
-            ...lesson.subTopics.map((subTopic) => _buildSubTopicContent(subTopic)),
+            ...lesson.subTopics.map((subTopic) => _buildSubTopicContent(context, subTopic)),
             // 2. Add the Quiz Tab View
             _QuizTab(lesson: lesson, lessonIndex: index),
           ],
@@ -46,41 +46,40 @@ class LessonDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSubTopicContent(SubTopic subTopic) {
+  Widget _buildSubTopicContent(BuildContext context, SubTopic subTopic) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title
           Text(
             subTopic.title,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.brown,
+              color: colorScheme.onBackground,
             ),
           ),
           const SizedBox(height: 20),
-
-          // Content Text
           buildStyledText(
             subTopic.content,
-            defaultStyle: const TextStyle(
-              color: Colors.black,
+            defaultStyle: TextStyle(
+              color: colorScheme.onBackground,
               fontSize: 16,
               height: 1.6,
             ),
           ),
           const SizedBox(height: 30),
-
-          // --- COMPILER INTEGRATION ---
-          // Only show if runnableCode exists in the data
           if (subTopic.runnableCode != null) ...[
             const Divider(),
-            const Text(
+            Text(
               "Try it out:",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onBackground,
+              ),
             ),
             const SizedBox(height: 10),
             _CodeEditorWidget(
@@ -326,9 +325,18 @@ class _QuizTabState extends State<_QuizTab> {
                   entry.value.toLowerCase().trim())
                   : userAnswer.toLowerCase().trim() == question.correctAnswer.toLowerCase().trim();
 
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              final colorScheme = Theme.of(context).colorScheme;
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
-                color: isCorrect ? Colors.green.shade50 : Colors.red.shade50,
+                color: isCorrect
+                    ? (isDark
+                    ? colorScheme.surfaceVariant.withOpacity(0.4)
+                    : Colors.green.shade50)
+                    : (isDark
+                    ? colorScheme.errorContainer.withOpacity(0.45)
+                    : Colors.red.shade50),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -338,55 +346,80 @@ class _QuizTabState extends State<_QuizTab> {
                         children: [
                           Icon(
                             isCorrect ? Icons.check_circle : Icons.cancel,
-                            color: isCorrect ? Colors.green : Colors.red,
+                            color: isCorrect
+                                ? (isDark ? colorScheme.onSurface : Colors.green)
+                                : (isDark ? colorScheme.onErrorContainer : Colors.red),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Question ${index + 1}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(question.question),
+                      Text(
+                        question.question,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
                       const Divider(height: 20),
-                      if (isMatching)
-                        ...userMatchingList,
+                      if (isMatching) ...userMatchingList,
                       if (!isMatching)
                         Text(
                           'Your answer: $userAnswer',
-                          style: const TextStyle(fontStyle: FontStyle.italic),
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       const SizedBox(height: 4),
                       if (!isMatching)
                         Text(
                           'Correct answer: ${question.correctAnswer}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            color: isDark ? colorScheme.tertiary : Colors.green,
                           ),
                         ),
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: isDark
+                              ? colorScheme.surfaceVariant.withOpacity(0.7)
+                              : Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.shade200),
+                          border: Border.all(
+                            color: isDark
+                                ? colorScheme.outlineVariant
+                                : Colors.blue.shade200,
+                          ),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.lightbulb_outline, color: Colors.blue.shade700, size: 20),
+                            Icon(
+                              Icons.lightbulb_outline,
+                              color: isDark ? colorScheme.primary : Colors.blue.shade700,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 question.explanation,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.blue.shade900,
+                                  color: isDark
+                                      ? colorScheme.onSurface
+                                      : Colors.blue.shade900,
                                 ),
                               ),
                             ),
@@ -456,17 +489,35 @@ class _QuizTabState extends State<_QuizTab> {
   }
 
   Widget _buildQuestionWidget(Question question, int index) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Card(
+      // Card background adapts to dark mode
+      color: theme.brightness == Brightness.dark
+          ? colorScheme.surfaceVariant
+          : null,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Question ${index + 1} of ${widget.lesson.questions.length}'),
-            Text(question.question),
+            // Progress text uses onSurfaceVariant
+            Text(
+              'Question ${index + 1} of ${widget.lesson.questions.length}',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+            // Question text uses onSurface + bold
+            Text(
+              question.question,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
             const SizedBox(height: 16),
 
-            // Question Type Logic (Preserved)
+            // Question Type Logic (unchanged)
             if (question.type == QuestionType.multipleChoice)
               ...question.options!.map((option) {
                 return RadioListTile<String>(
@@ -516,14 +567,19 @@ class _QuizTabState extends State<_QuizTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                Text(entry.key,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500)),
                                 const SizedBox(height: 8),
                                 SizedBox(
                                   width: double.infinity,
                                   child: DropdownButtonFormField<String>(
                                     decoration: const InputDecoration(
                                       border: OutlineInputBorder(),
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
                                     ),
                                     hint: const Text('Select answer'),
                                     value: userAnswers['${index}_${entry.key}'],
@@ -535,7 +591,8 @@ class _QuizTabState extends State<_QuizTab> {
                                     }).toList(),
                                     onChanged: (value) {
                                       setState(() {
-                                        userAnswers['${index}_${entry.key}'] = value!;
+                                        userAnswers['${index}_${entry.key}'] =
+                                        value!;
                                       });
                                     },
                                   ),
@@ -551,4 +608,5 @@ class _QuizTabState extends State<_QuizTab> {
       ),
     );
   }
+
 }

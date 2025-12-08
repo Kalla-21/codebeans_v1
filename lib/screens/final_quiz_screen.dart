@@ -103,12 +103,17 @@ class _FinalQuizScreenState extends State<FinalQuizScreen> {
                         entry.value.toLowerCase().trim())
                         : userAnswer.toLowerCase().trim() ==
                         question.correctAnswer.toLowerCase().trim();
-
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final colorScheme = Theme.of(context).colorScheme;
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       color: isCorrect
-                          ? Colors.green.shade50
-                          : Colors.red.shade50,
+                          ? (isDark
+                          ? colorScheme.surfaceVariant.withOpacity(0.4)
+                          : Colors.green.shade50)
+                          : (isDark
+                          ? colorScheme.errorContainer.withOpacity(0.45)
+                          : Colors.red.shade50),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -117,63 +122,85 @@ class _FinalQuizScreenState extends State<FinalQuizScreen> {
                             Row(
                               children: [
                                 Icon(
-                                  isCorrect
-                                      ? Icons.check_circle
-                                      : Icons.cancel,
+                                  isCorrect ? Icons.check_circle : Icons.cancel,
                                   color: isCorrect
-                                      ? Colors.green
-                                      : Colors.red,
+                                      ? (isDark ? colorScheme.onSurface : Colors.green)
+                                      : (isDark ? colorScheme.onErrorContainer : Colors.red),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     'Question ${index + 1}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Text(question.question,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
+                            Text(
+                              question.question,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
                             const Divider(height: 20),
                             if (isMatching) ...userMatchingList,
                             if (!isMatching)
-                              Text('Your answer: $userAnswer',
-                                  style: const TextStyle(
-                                      fontStyle: FontStyle.italic)),
+                              Text(
+                                'Your answer: $userAnswer',
+                                style: TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
                             const SizedBox(height: 4),
                             if (!isMatching)
                               Text(
                                 'Correct answer: ${question.correctAnswer}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? colorScheme.tertiary : Colors.green,
+                                ),
                               ),
                             const SizedBox(height: 8),
                             if (question.explanation.isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
+                                  color: isDark
+                                      ? colorScheme.surfaceVariant.withOpacity(0.7)
+                                      : Colors.blue.shade50,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                      color: Colors.blue.shade200),
+                                    color: isDark
+                                        ? colorScheme.outlineVariant
+                                        : Colors.blue.shade200,
+                                  ),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.lightbulb_outline,
-                                        color: Colors.blue.shade700, size: 20),
+                                    Icon(
+                                      Icons.lightbulb_outline,
+                                      color: isDark
+                                          ? colorScheme.primary
+                                          : Colors.blue.shade700,
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         question.explanation,
                                         style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.blue.shade900),
+                                          fontSize: 13,
+                                          color: isDark
+                                              ? colorScheme.onSurface
+                                              : Colors.blue.shade900,
+                                        ),
                                       ),
                                     ),
                                   ],
