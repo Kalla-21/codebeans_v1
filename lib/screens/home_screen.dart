@@ -217,19 +217,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       radius: 40,
                       backgroundColor: Colors.white,
                       backgroundImage: (_photoUrl != null && _photoUrl!.isNotEmpty)
-                          ? NetworkImage(_photoUrl!)
+                          ? (_photoUrl!.startsWith('assets/')
+                          ? AssetImage(_photoUrl!) as ImageProvider
+                          : NetworkImage(_photoUrl!))
                           : null,
                       child: (_photoUrl == null || _photoUrl!.isEmpty)
-                          ? Text(
-                        initial,
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.brown.shade800,
-                        ),
-                      )
+                          ? Text(initial, /* ... */)
                           : null,
                     ),
+
                     const SizedBox(height: 12),
                     Text(
                       _username,
@@ -268,23 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             // --- DRAWER ITEMS ---
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.brown.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.brown.shade200),
-                ),
-                child: SwitchListTile(
-                  secondary: Icon(Icons.lock_clock, color: Colors.brown.shade700),
-                  title: const Text('Progressive Mode', style: TextStyle(fontWeight: FontWeight.bold)),
-                  value: progressiveMode,
-                  activeColor: Colors.brown.shade700,
-                  onChanged: (val) => setState(() => progressiveMode = val),
-                ),
-              ),
-            ),
+
             const Divider(),
             ListTile(
               leading: const Icon(Icons.home),
@@ -292,13 +272,35 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () {
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () async {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings coming soon!')));
+                final result = await Navigator.of(context).pushNamed('/profile');
+                if (result == true && mounted) {
+                  await _initializeData();
+                }
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await Navigator.of(context).pushNamed(
+                  '/settings',
+                  arguments: {
+                    'progressiveMode': progressiveMode,
+                    'darkMode': (Theme.of(context).brightness == Brightness.dark),
+                  },
+                );
+                if (result is Map && mounted) {
+                  setState(() => progressiveMode = result['progressiveMode'] as bool);
+                  final dark = result['darkMode'] as bool;
+                }
+              },
+            ),
+
             ListTile(
               leading: const Icon(Icons.info),
               title: const Text('About'),
@@ -311,6 +313,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   applicationIcon: const Icon(Icons.coffee, size: 50, color: Colors.brown),
                   children: const [Text('Brew your Java skills one bean at a time!')],
                 );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.group),
+              title: const Text('Credits'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).pushNamed('/credits');
               },
             ),
             const Spacer(),

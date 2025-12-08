@@ -16,8 +16,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   final FirebaseService _firebaseService = FirebaseService();
 
+  // preset avatars – same as ProfileScreen
+  final List<String> _avatarPaths = const [
+    'assets/avatars/avatar1.png',
+    'assets/avatars/avatar2.png',
+    'assets/avatars/avatar3.png',
+    'assets/avatars/avatar4.png',
+    'assets/avatars/avatar5.png',
+    'assets/avatars/avatar6.png',
+  ];
+
+  String? _selectedAvatar;
+
   bool _isLoading = false;
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedAvatar = _avatarPaths.first; // default avatar
+  }
 
   // --- REUSED: Mode Selection Dialog ---
   void _showModeSelectionDialog(BuildContext context) {
@@ -88,15 +106,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Create User & Profile in one go
       await _firebaseService.createUserAndProfile(
         _emailController.text.trim(),
         _passwordController.text.trim(),
         _usernameController.text.trim(),
-        _bioController.text.trim().isEmpty ? 'Ready to code!' : _bioController.text.trim(),
+        _bioController.text.trim().isEmpty
+            ? 'Ready to code!'
+            : _bioController.text.trim(),
+        photoUrl: _selectedAvatar ?? _avatarPaths.first, // ← send avatar
       );
 
-      // On Success
       if (mounted) {
         _showModeSelectionDialog(context);
       }
@@ -126,6 +145,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
           children: [
             const Icon(Icons.person_add, size: 60, color: Colors.brown),
             const SizedBox(height: 20),
+
+            //Profile Picture
+            const SizedBox(height: 16),
+            const Text(
+              'Choose profile picture',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const ClampingScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemCount: _avatarPaths.length,
+              itemBuilder: (context, index) {
+                final path = _avatarPaths[index];
+                final isSelected = path == _selectedAvatar;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedAvatar = path;
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: isSelected ? Colors.brown.shade700 : Colors.grey.shade300,
+                        width: isSelected ? 3 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.asset(path, fit: BoxFit.cover),
+                    ),
+                  ),
+                );
+              },
+            ),
 
             // Username
             TextField(

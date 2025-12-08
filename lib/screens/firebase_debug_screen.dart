@@ -208,7 +208,6 @@ class _FirebaseDebugScreenState extends State<FirebaseDebugScreen> {
         testUserId,
         'TestUser123',
         'Testing Firebase',
-        '',
       );
       _addLog('✅ Profile data written');
 

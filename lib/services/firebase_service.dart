@@ -163,6 +163,8 @@ class FirebaseService {
     }
   }
 
+
+
   // ====================================
   // FINAL QUIZ OPERATIONS
   // ====================================
@@ -242,22 +244,33 @@ class FirebaseService {
   Future<void> updateUserProfile(
       String userId,
       String username,
-      String bio,
-      String photoUrl, // Changed from avatarUrl to match model
-      ) async {
+      String bio, {
+        String? photoUrl,
+      }) async {
     try {
       final sanitizedUserId = _sanitizeKey(userId);
-      // UPDATED: Update root 'users/$uid'
-      await _database.child('users/$sanitizedUserId').update({
+
+      final updateData = <String, dynamic>{
         'username': username,
         'bio': bio,
-        'photoUrl': photoUrl,
-      });
+      };
+      if (photoUrl != null) {
+        updateData['photoUrl'] = photoUrl;
+      }
+
+      await _database.child('users/$sanitizedUserId').update(updateData);
       print('✅ Profile updated successfully');
+
+      final user = _auth.currentUser;
+      if (user != null && user.uid == userId) {
+        await user.updateDisplayName(username);
+        await user.reload();            // force refresh of cached auth profile
+      }
     } catch (e) {
       print('❌ Error updating profile: $e');
     }
   }
+
 
   // ====================================
   // USER PROGRESS OPERATIONS
