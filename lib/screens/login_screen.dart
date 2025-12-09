@@ -290,19 +290,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                // Google Sign In (Placeholder)
-                OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Google Sign-In requires extra setup (SHA-1).")),
-                    );
-                  },
-                  icon: const Icon(Icons.g_mobiledata, size: 28),
-                  label: const Text("Sign in with Google"),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
+                // // Google Sign In (Placeholder)
+                // OutlinedButton.icon(
+                //   onPressed: () {
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       const SnackBar(content: Text("Google Sign-In requires extra setup (SHA-1).")),
+                //     );
+                //   },
+                //   icon: const Icon(Icons.g_mobiledata, size: 28),
+                //   label: const Text("Sign in with Google"),
+                //   style: OutlinedButton.styleFrom(
+                //     padding: const EdgeInsets.symmetric(vertical: 12),
+                //   ),
+                // ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

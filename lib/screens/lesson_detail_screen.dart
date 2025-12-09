@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/lesson.dart';
 import '../widget/styling.dart';
+import 'package:confetti/confetti.dart';
 
 class LessonDetailScreen extends StatelessWidget {
   const LessonDetailScreen({super.key});
@@ -232,10 +233,24 @@ class _QuizTab extends StatefulWidget {
 }
 
 class _QuizTabState extends State<_QuizTab> {
+  late ConfettiController _confettiController;
   Map<String, String> userAnswers = {};
   bool quizSubmitted = false;
   double score = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2), // Let the confetti fall for 2 seconds
+    );
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
   void _submitQuiz() {
     double totalScore = 0;
     for (int i = 0; i < widget.lesson.questions.length; i++) {
@@ -262,6 +277,7 @@ class _QuizTabState extends State<_QuizTab> {
     setState(() {
       score = totalScore;
       quizSubmitted = true;
+      _confettiController.play();
     });
   }
 
@@ -272,182 +288,203 @@ class _QuizTabState extends State<_QuizTab> {
   @override
   Widget build(BuildContext context) {
     if (quizSubmitted) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            Icon(
-              score >= 4 ? Icons.emoji_events : Icons.thumbs_up_down,
-              size: 100,
-              color: score >= 4 ? Colors.amber : Colors.orange,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Quiz Complete!',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Score: ${score.toStringAsFixed(1)} / ${widget.lesson.questions.length}',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 30),
+      return Stack(
+        alignment: Alignment.topCenter,
+        children: [
+      SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+    child: Column(
+    children: [
+    Icon(
+    score >= 4 ? Icons.emoji_events : Icons.thumbs_up_down,
+    size: 100,
+    color: score >= 4 ? Colors.amber : Colors.orange,
+    ),
+    const SizedBox(height: 20),
+    Text(
+    'Quiz Complete!',
+    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+    fontWeight: FontWeight.bold,
+    ),
+    ),
+    const SizedBox(height: 10),
+    Text(
+    'Score: ${score.toStringAsFixed(1)} / ${widget.lesson.questions.length}',
+    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    ),
+    const SizedBox(height: 30),
 
-            // Show all answers logic
-            ...List.generate(widget.lesson.questions.length, (index) {
-              final question = widget.lesson.questions[index];
-              bool isMatching = question.type == QuestionType.matching;
-              final matchingPairs = question.matchingPairs ?? {};
+    // Show all answers logic
+    ...List.generate(widget.lesson.questions.length, (index) {
+    final question = widget.lesson.questions[index];
+    bool isMatching = question.type == QuestionType.matching;
+    final matchingPairs = question.matchingPairs ?? {};
 
-              final userMatchingList = <Widget>[];
-              if (isMatching) {
-                matchingPairs.forEach((left, right) {
-                  final userVal = userAnswers['${index}_$left'] ?? 'Not answered';
-                  userMatchingList.add(Row(
-                    children: [
-                      const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Expanded(child: Text('$left → $userVal', style: const TextStyle(fontStyle: FontStyle.italic))),
-                    ],
-                  ));
-                  userMatchingList.add(Padding(
-                    padding: const EdgeInsets.only(left: 20),
-                    child: Text('Correct: $right', style: const TextStyle(color: Colors.green)),
-                  ));
-                  userMatchingList.add(const SizedBox(height: 8));
-                });
-              }
-              final userAnswer = userAnswers[index.toString()] ?? 'Not answered';
-              final isCorrect = isMatching
-                  ? matchingPairs.entries.every((entry) =>
-              (userAnswers['${index}_${entry.key}'] ?? '').toLowerCase().trim() ==
-                  entry.value.toLowerCase().trim())
-                  : userAnswer.toLowerCase().trim() == question.correctAnswer.toLowerCase().trim();
+    final userMatchingList = <Widget>[];
+    if (isMatching) {
+    matchingPairs.forEach((left, right) {
+    final userVal = userAnswers['${index}_$left'] ?? 'Not answered';
+    userMatchingList.add(Row(
+    children: [
+    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+    Expanded(child: Text('$left → $userVal', style: const TextStyle(fontStyle: FontStyle.italic))),
+    ],
+    ));
+    userMatchingList.add(Padding(
+    padding: const EdgeInsets.only(left: 20),
+    child: Text('Correct: $right', style: const TextStyle(color: Colors.green)),
+    ));
+    userMatchingList.add(const SizedBox(height: 8));
+    });
+    }
+    final userAnswer = userAnswers[index.toString()] ?? 'Not answered';
+    final isCorrect = isMatching
+    ? matchingPairs.entries.every((entry) =>
+    (userAnswers['${index}_${entry.key}'] ?? '').toLowerCase().trim() ==
+    entry.value.toLowerCase().trim())
+        : userAnswer.toLowerCase().trim() == question.correctAnswer.toLowerCase().trim();
 
-              final isDark = Theme.of(context).brightness == Brightness.dark;
-              final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                color: isCorrect
-                    ? (isDark
-                    ? colorScheme.surfaceVariant.withOpacity(0.4)
-                    : Colors.green.shade50)
-                    : (isDark
-                    ? colorScheme.errorContainer.withOpacity(0.45)
-                    : Colors.red.shade50),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            isCorrect ? Icons.check_circle : Icons.cancel,
-                            color: isCorrect
-                                ? (isDark ? colorScheme.onSurface : Colors.green)
-                                : (isDark ? colorScheme.onErrorContainer : Colors.red),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Question ${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        question.question,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      const Divider(height: 20),
-                      if (isMatching) ...userMatchingList,
-                      if (!isMatching)
-                        Text(
-                          'Your answer: $userAnswer',
-                          style: TextStyle(
-                            fontStyle: FontStyle.italic,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      const SizedBox(height: 4),
-                      if (!isMatching)
-                        Text(
-                          'Correct answer: ${question.correctAnswer}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? colorScheme.tertiary : Colors.green,
-                          ),
-                        ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? colorScheme.surfaceVariant.withOpacity(0.7)
-                              : Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isDark
-                                ? colorScheme.outlineVariant
-                                : Colors.blue.shade200,
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.lightbulb_outline,
-                              color: isDark ? colorScheme.primary : Colors.blue.shade700,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                question.explanation,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark
-                                      ? colorScheme.onSurface
-                                      : Colors.blue.shade900,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+    return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    color: isCorrect
+    ? (isDark
+    ? colorScheme.surfaceVariant.withOpacity(0.4)
+        : Colors.green.shade50)
+        : (isDark
+    ? colorScheme.errorContainer.withOpacity(0.45)
+        : Colors.red.shade50),
+    child: Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    Row(
+    children: [
+    Icon(
+    isCorrect ? Icons.check_circle : Icons.cancel,
+    color: isCorrect
+    ? (isDark ? colorScheme.onSurface : Colors.green)
+        : (isDark ? colorScheme.onErrorContainer : Colors.red),
+    ),
+    const SizedBox(width: 8),
+    Expanded(
+    child: Text(
+    'Question ${index + 1}',
+    style: TextStyle(
+    fontWeight: FontWeight.bold,
+    color: colorScheme.onSurface,
+    ),
+    ),
+    ),
+    ],
+    ),
+    const SizedBox(height: 8),
+    Text(
+    question.question,
+    style: TextStyle(
+    fontWeight: FontWeight.bold,
+    color: colorScheme.onSurface,
+    ),
+    ),
+    const Divider(height: 20),
+    if (isMatching) ...userMatchingList,
+    if (!isMatching)
+    Text(
+    'Your answer: $userAnswer',
+    style: TextStyle(
+    fontStyle: FontStyle.italic,
+    color: colorScheme.onSurfaceVariant,
+    ),
+    ),
+    const SizedBox(height: 4),
+    if (!isMatching)
+    Text(
+    'Correct answer: ${question.correctAnswer}',
+    style: TextStyle(
+    fontWeight: FontWeight.bold,
+    color: isDark ? colorScheme.tertiary : Colors.green,
+    ),
+    ),
+    const SizedBox(height: 12),
+    Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+    color: isDark
+    ? colorScheme.surfaceVariant.withOpacity(0.7)
+        : Colors.blue.shade50,
+    borderRadius: BorderRadius.circular(8),
+    border: Border.all(
+    color: isDark
+    ? colorScheme.outlineVariant
+        : Colors.blue.shade200,
+    ),
+    ),
+    child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    Icon(
+    Icons.lightbulb_outline,
+    color: isDark ? colorScheme.primary : Colors.blue.shade700,
+    size: 20,
+    ),
+    const SizedBox(width: 8),
+    Expanded(
+    child: Text(
+    question.explanation,
+    style: TextStyle(
+    fontSize: 13,
+    color: isDark
+    ? colorScheme.onSurface
+        : Colors.blue.shade900,
+    ),
+    ),
+    ),
+    ],
+    ),
+    ),
+    ],
+    ),
+    ),
+    );
+    }),
 
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _returnToLessons,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                backgroundColor: Colors.green.shade600,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text(
-                'Complete Lesson',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
+    const SizedBox(height: 20),
+    ElevatedButton(
+    onPressed: _returnToLessons,
+    style: ElevatedButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+    backgroundColor: Colors.green.shade600,
+    foregroundColor: Colors.white,
+    ),
+    child: const Text(
+    'Complete Lesson',
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    ),
+    ),
+    ],
+    ),
+    ),
+          ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive, // Fun explosion effect
+            shouldLoop: false,
+            numberOfParticles: 30, // More particles for a bigger celebration
+            gravity: 0.1,
+            emissionFrequency: 0.05,
+            colors: const [
+              Colors.green,
+              Colors.blue,
+              Colors.pink,
+              Colors.orange,
+              Colors.purple,
+              Colors.yellow,
+            ],
+          ),
+        ],
       );
     }
 

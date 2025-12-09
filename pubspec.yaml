@@ -24,6 +24,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_markdown: ^0.7.7+1
   confetti: ^0.8.0
+  google_sign_in: ^7.2.0
 
 flutter_launcher_icons:
   android: true
@@ -47,7 +48,6 @@ dev_dependencies:
 flutter:
   assets:
     - assets/icon/app_icon.png
-    - assets/backgrounds/
     - assets/avatars/avatar1.png
     - assets/avatars/avatar2.png
     - assets/avatars/avatar3.png
